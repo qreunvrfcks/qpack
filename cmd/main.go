@@ -1,6 +1,6 @@
 package main
 
-// qpack: .dat -> (.bin) для хранения.
+// qpack: .dat -> (.qpac) для хранения.
 
 import (
 	"fmt"
@@ -14,8 +14,8 @@ import (
 )
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "  qpack pack <inDir> <outDir> [--run <name>] [--config <path.yaml>] [--tar]  # .dat -> run-папка (.min + yaml + отпечаток)")
-	fmt.Fprintln(os.Stderr, "  qpack unpack <inDir|in.tar.gz> <outDir> [--config <path.yaml>]  # .min или архив -> .dat (n с 1, разделители и place — нули)")
+	fmt.Fprintln(os.Stderr, "  qpack pack <inDir> <outDir> [--run <name>] [--config <path.yaml>] [--tar]  # .dat -> run-папка (.qpac + yaml + отпечаток)")
+	fmt.Fprintln(os.Stderr, "  qpack unpack <inDir|in.tar.gz> <outDir> [--config <path.yaml>]  # .qpac или архив -> .dat (n с 1, разделители и place — нули)")
 	fmt.Fprintln(os.Stderr, "  qpack init-config [path]             # записать встроенный конфиг (по умолч. default.yaml)")
 }
 

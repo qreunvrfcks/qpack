@@ -27,7 +27,7 @@ func (b *bitReader) get(width uint) uint64 {
 
 func (b *bitReader) left() int { return len(b.buf)*8 - int(b.pos) }
 
-type MinEvent struct {
+type QpacEvent struct {
 	Y     bool
 	Time  uint64
 	Delta uint64
@@ -36,7 +36,7 @@ type MinEvent struct {
 }
 
 // Читает файл в память.
-func DecodeMin(path string) ([]MinEvent, error) {
+func DecodeQpac(path string) ([]QpacEvent, error) {
 	buf, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("open %q: %w", path, err)
@@ -58,7 +58,7 @@ func DecodeMin(path string) ([]MinEvent, error) {
 	}
 
 	br := &bitReader{buf: buf[config.HeaderLen:]}
-	var events []MinEvent
+	var events []QpacEvent
 	var data [config.NPlates]uint32
 	var prev uint64
 	var haveBase bool
@@ -125,7 +125,7 @@ func DecodeMin(path string) ([]MinEvent, error) {
 			}
 		}
 
-		events = append(events, MinEvent{Y: y, Time: t, Delta: delta, Trig: trig, Data: data})
+		events = append(events, QpacEvent{Y: y, Time: t, Delta: delta, Trig: trig, Data: data})
 	}
 
 	return events, nil

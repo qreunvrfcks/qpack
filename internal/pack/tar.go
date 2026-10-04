@@ -22,7 +22,7 @@ func PackRun(runDir string) (string, error) {
 }
 
 // Жмёт все .dat ниже inputRoot в архив arcPath:
-// Внутри архива run-папка <runName>/ (.bin + yaml + отпечаток).
+// Внутри архива run-папка <runName>/ (.qpac + yaml + отпечаток).
 func PackDirTo(inputRoot, arcPath, runName string) (int, error) {
 	stage, err := os.MkdirTemp("", "qpack-*")
 	if err != nil {

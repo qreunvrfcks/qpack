@@ -58,7 +58,7 @@ type plateGroup struct {
 }
 
 // Жмёт все .dat ниже inputRoot в run-папку ниже outputRoot:
-// (.dat -> .bin) + detector.qpack.yaml + fingerprint.txt.
+// (.dat -> .qpac) + detector.qpack.yaml + fingerprint.txt.
 func ConvertDir(inputRoot, outputRoot, runName string) (string, int, error) {
 	runDir := filepath.Join(outputRoot, runName)
 	if err := os.MkdirAll(runDir, 0755); err != nil {
@@ -74,7 +74,7 @@ func ConvertDir(inputRoot, outputRoot, runName string) (string, int, error) {
 	return runDir, count, nil
 }
 
-// Общий прогон .dat -> .bin, пишет в готовую папку runDir.
+// Общий прогон .dat -> .qpac, пишет в готовую папку runDir.
 // Битый файл пропускается, ошибка идёт в лог и консоль.
 // Возвращает число сжатых файлов.
 func convertInto(inputRoot, runDir string) (int, error) {
@@ -91,11 +91,11 @@ func convertInto(inputRoot, runDir string) (int, error) {
 		if err != nil {
 			return err
 		}
-		outputPath := filepath.Join(runDir, strings.TrimSuffix(relativePath, filepath.Ext(relativePath))+".min")
+		outputPath := filepath.Join(runDir, strings.TrimSuffix(relativePath, filepath.Ext(relativePath))+".qpac")
 		if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
 			return err
 		}
-		if err := ConvertFileMin(path, outputPath); err != nil {
+		if err := ConvertFileQpac(path, outputPath); err != nil {
 			logger.Error("READ %s: %v (skipped)", path, err)
 			os.Remove(outputPath) // недожатый хвост не оставляем
 			return nil
@@ -109,9 +109,9 @@ func convertInto(inputRoot, runDir string) (int, error) {
 	return count, nil
 }
 
-// Конвертирует файл .dat в .Bin (v12).
+// Конвертирует файл .dat в .qpac (v12).
 // Пустые события (все платы нулевые) пропускаются.
-func ConvertFileMin(inputFile, outputFile string) error {
+func ConvertFileQpac(inputFile, outputFile string) error {
 	axis, err := AxisCode(inputFile)
 	if err != nil {
 		return err

@@ -1,4 +1,4 @@
-# qpack — .dat -> .bin
+# qpack — .dat -> .qpac
 
 Программа для сжатия сырых данных в архивный формат.
 При работе удаляются нулевые и мусорные строки.
@@ -6,10 +6,10 @@
 ## Запуск
 
 ```
-# .dat -> .bin
+# .dat -> .qpac
 go run ./cmd pack <inDir> <outDir> [--run <name>] [--config <cfg.yaml>] [--tar]
 
-# .bin -> .dat
+# .qpac -> .dat
 go run ./cmd unpack <inDir|in.tar.gz> <outDir> [--config <cfg.yaml>]
 
 # записать встроенный конфиг (по умолч. default.yaml)
@@ -18,10 +18,10 @@ go run ./cmd init-config [path]
 
 pack: берёт все `.dat` из `<inDir>`, создаёт `<outDir>/<name>/` (по умолчанию `QPack_inDir`):
 
-Внутри`.bin` файлы, `detector.minpack.yaml` и `fingerprint.txt`.
+Внутри`.qpac` файлы, `detector.qpack.yaml` и `fingerprint.txt`.
 `--tar`: создает архив `<outDir>/<name>.tar.gz`.
 
-unpack: разворачивает `.bin` обратно в `.dat` построчно в исходном формате
+unpack: разворачивает `.qpac` обратно в `.dat` построчно в исходном формате
 
 Ось (`_X_`/`_Y_`) определяется по имени входного файла.
 
@@ -34,7 +34,7 @@ unpack: разворачивает `.bin` обратно в `.dat` постро�
 
 Мусорные/нулевые строки, ошибки пишутся `SKIP/EMPTY/ERROR` в `.log`.
 
-## Формат min (v12)
+## Формат qpac (v12)
 
 Заголовок 16 байт: `magic(0x4E4F554D), version(12), layers(3), plates(6)`.
 Событие бит-пак: `[marker:5][tAbs:64][tdelta:25][(1+idx:5/cnt-1:5/kb:5)*,0]`.
