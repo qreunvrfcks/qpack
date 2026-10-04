@@ -22,8 +22,8 @@ func plateToRaw() [config.NPlates]int {
 	return m
 }
 
-// Разворачивает все .bin ниже inputRoot в .dat ниже outputRoot.
-// Относительные пути и имена сохраняются (.bin -> .dat).
+// Разворачивает все .qpac ниже inputRoot в .dat ниже outputRoot.
+// Относительные пути и имена сохраняются (.qpac -> .dat).
 // Битый файл пропускается с READ-ошибкой в лог и консоль.
 func UnpackDir(inputRoot, outputRoot string) (int, error) {
 	count := 0
@@ -31,7 +31,7 @@ func UnpackDir(inputRoot, outputRoot string) (int, error) {
 		if err != nil {
 			return err
 		}
-		if entry.IsDir() || !strings.EqualFold(filepath.Ext(entry.Name()), ".min") {
+		if entry.IsDir() || !strings.EqualFold(filepath.Ext(entry.Name()), ".qpac") {
 			return nil
 		}
 
@@ -57,7 +57,7 @@ func UnpackDir(inputRoot, outputRoot string) (int, error) {
 	return count, nil
 }
 
-// Разворачивает файл .bin в .dat.
+// Разворачивает файл .qpac в .dat.
 func UnpackFile(inputFile, outputFile string) error {
 	axis, err := pack.AxisCode(inputFile)
 	if err != nil {
@@ -65,7 +65,7 @@ func UnpackFile(inputFile, outputFile string) error {
 	}
 	ySide := axis != 0
 
-	events, err := DecodeMin(inputFile)
+	events, err := DecodeQpac(inputFile)
 	if err != nil {
 		return err
 	}
