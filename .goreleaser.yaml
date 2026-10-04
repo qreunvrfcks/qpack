@@ -1,6 +1,6 @@
 # GoReleaser configuration for qpack.
 # Release: git tag vX.Y.Z && git push origin vX.Y.Z
-# GitHub Action builds archives for linux/windows/darwin (amd64+arm64).
+# GitHub Action builds archives for linux/windows (amd64+arm64 linux, amd64 windows).
 
 version: 2
 
@@ -9,11 +9,7 @@ project_name: qpack
 builds:
   - id: qpack
     main: ./cmd
-    goos: [linux, windows, darwin]
-    goarch: [amd64, arm64]
-    ignore:
-      - goos: windows
-        goarch: arm64
+    goos: [linux, windows]
     ldflags:
       - -s -w
     env:
