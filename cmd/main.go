@@ -16,7 +16,7 @@ import (
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "  qpack pack <inDir> <outDir> [--run <name>] [--config <path.yaml>] [--tar]  # .dat -> run-папка (.min + yaml + отпечаток)")
-	fmt.Fprintln(os.Stderr, "  qpack unpack <inDir> <outDir> [--config <path.yaml>]  # .min -> .dat (n с 1, разделители и place — нули)")
+	fmt.Fprintln(os.Stderr, "  qpack unpack <inDir|in.tar.gz> <outDir> [--config <path.yaml>]  # .min или архив -> .dat (n с 1, разделители и place — нули)")
 	fmt.Fprintln(os.Stderr, "  qpack init-config [path]             # записать встроенный конфиг (по умолч. default.yaml)")
 }
 
@@ -58,7 +58,7 @@ func resolveConfig(lg interface{ Printf(string, ...any) }, cfgPath string, cfgSe
 		lg.Printf("CONFIG file %q (found nearby)", local)
 		return config.LoadFile(local)
 	}
-	fmt.Fprint(os.Stderr, "no default.yaml nearby. Use built-in default? (y/n) ")
+	fmt.Fprint(os.Stderr, "Warning! No config found. Continue with default config? (y/n) ")
 	var ans string
 	if _, err := fmt.Scanln(&ans); err != nil {
 		return fmt.Errorf("no config: no --config, no ./default.yaml (no input, fail-closed)")
@@ -113,7 +113,17 @@ func main() {
 		os.Exit(1)
 	}
 	if cmd == "unpack" {
-		count, err := unpack.UnpackDir(pos[0], pos[1])
+		src := pos[0]
+		if strings.EqualFold(filepath.Ext(src), ".gz") {
+			stage, err := unpack.UnpackTar(src)
+			if err != nil {
+				logger.Error("%v", err)
+				os.Exit(1)
+			}
+			defer os.RemoveAll(stage)
+			src = stage
+		}
+		count, err := unpack.UnpackDir(src, pos[1])
 		if err != nil {
 			logger.Error("%v", err)
 			os.Exit(1)

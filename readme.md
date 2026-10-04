@@ -6,18 +6,19 @@
 
 ```
 go run ./cmd pack <inDir> <outDir> [--run <name>] [--config <path.yaml>] [--tar]
-go run ./cmd unpack <inDir> <outDir> [--config <path.yaml>]  # .min -> .dat (см. ниже)
+go run ./cmd unpack <inDir|in.tar.gz> <outDir> [--config <path.yaml>]  # .min или архив -> .dat (см. ниже)
 go run ./cmd init-config [path]                                  # записать встроенный конфиг (по умолч. default.yaml)
 ```
 
 pack: берёт все `.dat` из `<inDir>`, создаёт `<outDir>/<name>/` (по умолчанию `run_YYYYMMDD_HHMMSS):
 `.min` файлы (структура подпапок сохраняется), `detector.minpack.yaml` + `fingerprint.txt` рядом.
 `--tar`: только архив `<outDir>/<name>.tar.gz`, папка рядом не создаётся (стейджинг в tmp, внутри архива run-папка `<name>/`).
-unpack: разворачивает `.min` обратно в `.dat` построчно в исходном формате
+unpack: разворачивает `.min` обратно в `.dat` построчно (вход — папка run или `.tar.gz` архив, распаковка во tmp) в исходном формате
 (`trig n delta t_abs t_sec <22 hex> <10 нулей>`); номер события `n` — заново с 1
 (в min не хранится), разделители и place-хвост — нулями (в min не хранятся).
 Ось (`_X_`/`_Y_`) определяется по имени входного файла.
 Мусорные строки (ненулевые разделители) скипаются с `SKIP` в лог, в файл не идут.
+Пустые события (все 22 hex-слова нулевые) скипаются с `EMPTY <файл> line <N>: trig=... time=...` в лог, в файл не идут.
 
 ## Конфиг
 

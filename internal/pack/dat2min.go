@@ -172,12 +172,22 @@ func ConvertFileMin(inputFile, outputFile string) error {
 
 	firstData := true
 	for lineNo := 1; scanner.Scan(); lineNo++ {
-		line := strings.TrimSpace(scanner.Text())
+		rawLine := scanner.Text()
+		line := strings.TrimSpace(rawLine)
 		if line == "" || line[0] == '!' || line[0] == '#' {
 			continue
 		}
 
-		fields := strings.Fields(line)
+		// Колонки разделены ОДИНОЧНЫМ табом; висячий таб в конце даёт
+		// пустое 38-е поле — его отрезаем. strings.Fields здесь нельзя:
+		// он склеил бы значимые пустые колонки, сдвинув индексы.
+		fields := strings.Split(line, "\t")
+		for len(fields) > 0 && strings.TrimSpace(fields[len(fields)-1]) == "" {
+			fields = fields[:len(fields)-1]
+		}
+		for i := range fields {
+			fields[i] = strings.TrimSpace(fields[i])
+		}
 		if len(fields) != config.NumCols {
 			if !firstData {
 				logger.Error("ROW %s line %d: got %d fields, want %d (skipped)", inputFile, lineNo, len(fields), config.NumCols)
@@ -231,6 +241,7 @@ func ConvertFileMin(inputFile, outputFile string) error {
 			ng++
 		}
 		if ng == 0 {
+			logger.Printf("EMPTY %s line %d: trig=%d time=%d (skipped)", inputFile, lineNo, row.Trig*100+55, row.Time)
 			continue // пустое событие: плат нет, писать нечего
 		}
 

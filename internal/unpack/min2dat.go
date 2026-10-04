@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"qpack/internal/config"
+	"qpack/internal/logger"
 	"qpack/internal/pack"
 	"strings"
 )
@@ -29,6 +30,7 @@ func plateToRaw() [config.NPlates]int {
 
 // UnpackDir разворачивает все .min ниже inputRoot в .dat ниже outputRoot.
 // Относительные пути и имена сохраняются (.min -> .dat).
+// Битый файл скипается с READ-ошибкой в лог и консоль, проход продолжается.
 func UnpackDir(inputRoot, outputRoot string) (int, error) {
 	count := 0
 	err := filepath.WalkDir(inputRoot, func(path string, entry os.DirEntry, err error) error {
@@ -48,7 +50,9 @@ func UnpackDir(inputRoot, outputRoot string) (int, error) {
 			return err
 		}
 		if err := UnpackFile(path, outputPath); err != nil {
-			return err
+			logger.Error("READ %s: %v (skipped)", path, err)
+			os.Remove(outputPath) // недожатый хвост не оставляем
+			return nil
 		}
 		count++
 		return nil

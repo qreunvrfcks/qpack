@@ -25,7 +25,7 @@ triggers: []
 archive_format:
   magic: 0x4E4F554D
   version: 12
-  marker_bits: 4
+  marker_bits: 5
   delta_bits: 25
   tdelta_bits: 64
   tdelta_vbits: 7
