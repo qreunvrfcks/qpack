@@ -13,8 +13,7 @@ import (
 )
 
 // DatRow — распарсенная строка .dat: только то, что пишется в файлы.
-// Время — одним числом: младшие разряды из t_abs + старшие из t_sec
-// (без умножения на NSPerSec: оба значения уже в тиках АЦП 1e8/с).
+// Time — абсолютное время в наносекундах: t_sec*NSPerSec + t_abs.
 // Trig — код триггера = trig/100 (55->0, 155->1, ..., 1555->15).
 // Сырое всегда вида ...55. В конфиге не задаётся.
 type DatRow struct {
@@ -68,7 +67,7 @@ func ParseDatLine(fields []string, lineNo int, inputFile string) (DatRow, error)
 	if err != nil {
 		return r, fmt.Errorf("line %d in %q: parse t_sec %q: %w", lineNo, inputFile, fields[config.TSecCol], err)
 	}
-	r.Time = tSec<<32 | tAbs
+	r.Time = tSec*config.NSPerSec + tAbs
 
 	for i, token := range fields[config.DataOffset : config.DataOffset+config.DataLen] {
 		parsed, err := strconv.ParseUint(token, 16, 32)

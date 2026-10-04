@@ -1,0 +1,44 @@
+# qpack — .dat -> .bin
+
+Программа для сжатия сырых данных в архивный формат.
+При работе удаляются нулевые и мусорные строки.
+
+## Запуск
+
+```
+# .dat -> .bin
+go run ./cmd pack <inDir> <outDir> [--run <name>] [--config <cfg.yaml>] [--tar]
+
+# .bin -> .dat
+go run ./cmd unpack <inDir|in.tar.gz> <outDir> [--config <cfg.yaml>]
+
+# записать встроенный конфиг (по умолч. default.yaml)
+go run ./cmd init-config [path]
+```
+
+pack: берёт все `.dat` из `<inDir>`, создаёт `<outDir>/<name>/` (по умолчанию QPack_inDir):
+`.bin` файлы, `detector.minpack.yaml` + `fingerprint.txt`.
+`--tar`: создает архив `<outDir>/<name>.tar.gz`.
+
+unpack: разворачивает `.bin` обратно в `.dat` построчно в исходном формате
+
+Ось (`_X_`/`_Y_`) определяется по имени входного файла.
+
+## Конфиг
+
+Порядок выбора: `--config <файл>` → `default.yaml` рядом → вопрос
+`Warning! No config found. Continue with default config? (y/n)` (отказ/EOF = fail-closed, exit 1).
+
+## Логи
+
+Мусорные/нулевые строки, ошибки пишутся `SKIP/EMPTY/ERROR` в `.log`.
+
+## Формат min (v12)
+
+Заголовок 16 байт: `magic(0x4E4F554D), version(12), layers(3), plates(6)`.
+Событие бит-пак: `[marker:5][tAbs:64][tdelta:25][(1+idx:5/cnt-1:5/kb:5)*,0]`.
+
+## Зависимости
+
+`go 1.27.1`,
+`gopkg.in/yaml.v3`.

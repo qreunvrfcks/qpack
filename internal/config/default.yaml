@@ -14,7 +14,7 @@ dat_format:
   tsec_col: 4
   data_offset: 5
   data_len: 22
-  ns_per_sec: 100000000
+  ns_per_sec: 1000000000
 
 axis:
   x_pattern: "_X_"

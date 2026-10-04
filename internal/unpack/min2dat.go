@@ -92,9 +92,9 @@ func UnpackFile(inputFile, outputFile string) error {
 	var sb strings.Builder
 	for n, ev := range events {
 		sb.Reset()
-		// trig: код*100+55 (55->55, 1->155, ..., 15->1555)
+		// trig: код*100+55 (55->55, 1->155, ..., 15->1555); время назад в t_sec/t_abs
 		fmt.Fprintf(&sb, "%d\t%d\t%d\t%d\t%d",
-			ev.Trig*100+55, n+1, ev.Delta, uint32(ev.Time&0xffffffff), uint32(ev.Time>>32))
+			ev.Trig*100+55, n+1, ev.Delta, uint32(ev.Time%uint64(config.NSPerSec)), uint32(ev.Time/uint64(config.NSPerSec)))
 		var raw [config.DataLen]uint32
 		for idx, v := range ev.Data {
 			raw[p2r[idx]] = v
