@@ -1,9 +1,5 @@
 package pack
 
-// Общий парсер одной строки .dat. Писатели dat->min и dat->db (пакет merge)
-// пользуются только им. Place-хвост и номер события не парсятся —
-// они никуда не пишутся.
-
 import (
 	"fmt"
 	"path/filepath"
@@ -12,10 +8,6 @@ import (
 	"strings"
 )
 
-// DatRow — распарсенная строка .dat: только то, что пишется в файлы.
-// Time — абсолютное время в наносекундах: t_sec*NSPerSec + t_abs.
-// Trig — код триггера = trig/100 (55->0, 155->1, ..., 1555->15).
-// Сырое всегда вида ...55. В конфиге не задаётся.
 type DatRow struct {
 	Trig  int32
 	Delta uint64
@@ -23,7 +15,7 @@ type DatRow struct {
 	Raw   [config.DataLen]uint32
 }
 
-// AxisCode — бит оси по имени файла: _X_ -> 0, _Y_ -> 1<<7.
+// Бит оси по имени файла: _X_ -> 0, _Y_ -> 1<<7.
 func AxisCode(inputFile string) (uint8, error) {
 	name := strings.ToUpper(filepath.Base(inputFile))
 	switch {
@@ -37,6 +29,7 @@ func AxisCode(inputFile string) (uint8, error) {
 	}
 }
 
+// Парсит строку .dat в DatRow.
 func ParseDatLine(fields []string, lineNo int, inputFile string) (DatRow, error) {
 	var r DatRow
 

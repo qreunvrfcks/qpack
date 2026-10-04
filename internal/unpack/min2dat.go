@@ -1,11 +1,5 @@
 package unpack
 
-// unpack: .min -> .dat построчно в исходном текстовом формате .dat.
-// Строка: trig n delta t_abs t_sec <22 hex u32> <10 place-нулей>.
-// Восстанавливается всё, что хранится в min; номер события n — заново по порядку
-// (в min не хранится): первое событие n=1, дальше +1. Разделители пишутся нулями,
-// place-хвост — нулями (в min не хранятся).
-
 import (
 	"bufio"
 	"fmt"
@@ -17,7 +11,7 @@ import (
 	"strings"
 )
 
-// plateToRaw — обратное к config.RawToPlate: плотный idx -> сырая позиция.
+// Обратная к RawToPlate: номер платы (0-17) -> номер ряда в data (0-21) с учетом плейсхолдеров.
 func plateToRaw() [config.NPlates]int {
 	var m [config.NPlates]int
 	for pos, idx := range config.RawToPlate {
@@ -28,9 +22,9 @@ func plateToRaw() [config.NPlates]int {
 	return m
 }
 
-// UnpackDir разворачивает все .min ниже inputRoot в .dat ниже outputRoot.
-// Относительные пути и имена сохраняются (.min -> .dat).
-// Битый файл скипается с READ-ошибкой в лог и консоль, проход продолжается.
+// Разворачивает все .bin ниже inputRoot в .dat ниже outputRoot.
+// Относительные пути и имена сохраняются (.bin -> .dat).
+// Битый файл пропускается с READ-ошибкой в лог и консоль.
 func UnpackDir(inputRoot, outputRoot string) (int, error) {
 	count := 0
 	err := filepath.WalkDir(inputRoot, func(path string, entry os.DirEntry, err error) error {
@@ -63,7 +57,7 @@ func UnpackDir(inputRoot, outputRoot string) (int, error) {
 	return count, nil
 }
 
-// UnpackFile разворачивает один .min в один .dat.
+// Разворачивает файл .bin в .dat.
 func UnpackFile(inputFile, outputFile string) error {
 	axis, err := pack.AxisCode(inputFile)
 	if err != nil {

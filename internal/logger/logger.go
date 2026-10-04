@@ -1,7 +1,5 @@
 package logger
 
-// Логирование CLI: всё пишется в файл log/<tool>.log;
-// в консоль (stderr) идут только ошибки и финальный результат.
 // Формат строк в файле: START / DONE / ERROR / SKIP.
 
 import (
@@ -18,13 +16,12 @@ var (
 	active = std
 )
 
-// Logger — файловый логгер плюс консольный вывод ошибок/результата.
 type Logger struct {
-	file *log.Logger // всё подряд
-	out  *log.Logger // только консоль (ошибки и результат)
+	file *log.Logger
+	out  *log.Logger
 }
 
-// Init открывает (создаёт) log/<tool>.log. Возвращает логгер и Close для defer.
+// Создает log/<tool>.log. Возвращает логгер и Close.
 func Init(tool string) (*Logger, func(), error) {
 	if err := os.MkdirAll("log", 0755); err != nil {
 		return nil, nil, fmt.Errorf("mkdir log: %w", err)
@@ -44,8 +41,7 @@ func Init(tool string) (*Logger, func(), error) {
 	return lg, func() { _ = f.Close() }, nil
 }
 
-// Printf пишет через активный логгер (после Init — только в файл,
-// до Init — в stderr). Для библиотечного кода (скипы convertor).
+// Пишет через активный логгер.
 func Printf(format string, v ...any) {
 	mu.Lock()
 	l := active
@@ -53,8 +49,7 @@ func Printf(format string, v ...any) {
 	l.Printf(format, v...)
 }
 
-// Error пишет ошибку в файл (с префиксом ERROR) и в консоль.
-// Для библиотечного кода (битые файлы convertor).
+// Пишет ошибку в .log файл (с префиксом ERROR) и в консоль.
 func Error(format string, v ...any) {
 	mu.Lock()
 	l := active
@@ -64,20 +59,19 @@ func Error(format string, v ...any) {
 	log.New(os.Stderr, "", 0).Printf("error: %s", msg)
 }
 
-// Log — только в файл (обычные события: START, SKIP, CONFIG).
+// Пишет в .log файл (START, SKIP, CONFIG).
 func (l *Logger) Log(format string, v ...any) { l.file.Printf(format, v...) }
 
-// Printf — для совместимости: только в файл (см. Log).
 func (l *Logger) Printf(format string, v ...any) { l.Log(format, v...) }
 
-// Error — в файл и в консоль.
+// Пишет ошибку в файл и в консоль.
 func (l *Logger) Error(format string, v ...any) {
 	msg := fmt.Sprintf(format, v...)
 	l.file.Printf("ERROR %s", msg)
 	l.out.Printf("error: %s", msg)
 }
 
-// Result — финальный результат: в файл как DONE и в консоль чистым текстом.
+// Пишет финальный результат в .log файл (DONE) и в консоль.
 func (l *Logger) Result(format string, v ...any) {
 	msg := fmt.Sprintf(format, v...)
 	l.file.Printf("DONE %s", msg)

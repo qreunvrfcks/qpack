@@ -1,7 +1,6 @@
 package main
 
-// qpack: .dat -> архивный min (.min) для хранения.
-// Больше ничего не делает: ни сшивки, ни заливки, ни дампов.
+// qpack: .dat -> (.bin) для хранения.
 
 import (
 	"fmt"
@@ -20,7 +19,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "  qpack init-config [path]             # записать встроенный конфиг (по умолч. default.yaml)")
 }
 
-// splitArgs отделяет позиционные от флагов --config/--run/--tar (в любом порядке).
+// Отделяет позиционные от флагов --config/--run/--tar (в любом порядке).
 func splitArgs(args []string) (pos []string, cfgPath, runName string, cfgSet, runSet, tarSet bool) {
 	skip := map[int]bool{}
 	for i := range args {
@@ -45,9 +44,9 @@ func splitArgs(args []string) (pos []string, cfgPath, runName string, cfgSet, ru
 	return pos, cfgPath, runName, cfgSet, runSet, tarSet
 }
 
-// resolveConfig выбирает конфиг: --config файл; иначе default.yaml рядом;
-// иначе спрашивает, использовать ли встроенный (файл НЕ создаётся —
-// штамп активного конфига всё равно ляжет рядом с выходом через WriteStamp).
+// Выбирает конфиг: --config файл;
+// иначе default.yaml рядом;
+// иначе спрашивает, использовать ли встроенный.
 func resolveConfig(lg interface{ Printf(string, ...any) }, cfgPath string, cfgSet bool) error {
 	if cfgSet {
 		lg.Printf("CONFIG file %q", cfgPath)

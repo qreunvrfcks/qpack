@@ -16,8 +16,9 @@ go run ./cmd unpack <inDir|in.tar.gz> <outDir> [--config <cfg.yaml>]
 go run ./cmd init-config [path]
 ```
 
-pack: берёт все `.dat` из `<inDir>`, создаёт `<outDir>/<name>/` (по умолчанию QPack_inDir):
-`.bin` файлы, `detector.minpack.yaml` + `fingerprint.txt`.
+pack: берёт все `.dat` из `<inDir>`, создаёт `<outDir>/<name>/` (по умолчанию `QPack_inDir`):
+
+Внутри`.bin` файлы, `detector.minpack.yaml` и `fingerprint.txt`.
 `--tar`: создает архив `<outDir>/<name>.tar.gz`.
 
 unpack: разворачивает `.bin` обратно в `.dat` построчно в исходном формате
@@ -26,7 +27,7 @@ unpack: разворачивает `.bin` обратно в `.dat` постро�
 
 ## Конфиг
 
-Порядок выбора: `--config <файл>` → `default.yaml` рядом → вопрос
+Порядок выбора: `--config <cfg.yaml>` → `default.yaml` рядом → вопрос
 `Warning! No config found. Continue with default config? (y/n)` (отказ/EOF = fail-closed, exit 1).
 
 ## Логи

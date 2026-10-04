@@ -1,8 +1,5 @@
 package unpack
 
-// Декодер архивного min-формата v12 (бит-в-бит с muon/internal/convertor).
-// Нужен только для unpack: .min -> .dat построчно.
-
 import (
 	"encoding/binary"
 	"fmt"
@@ -10,7 +7,7 @@ import (
 	"qpack/internal/config"
 )
 
-// bitReader читает биты LSB-first курсором по слайсу.
+// Читает биты курсором по слайсу.
 type bitReader struct {
 	buf []byte
 	pos uint // битовая позиция от начала buf
@@ -30,7 +27,6 @@ func (b *bitReader) get(width uint) uint64 {
 
 func (b *bitReader) left() int { return len(b.buf)*8 - int(b.pos) }
 
-// MinEvent — одно декодированное событие: ось, время, слова плат, delta, код триггера.
 type MinEvent struct {
 	Y     bool
 	Time  uint64
@@ -39,7 +35,7 @@ type MinEvent struct {
 	Data  [config.NPlates]uint32
 }
 
-// DecodeMin читает весь min-файл в память.
+// Читает файл в память.
 func DecodeMin(path string) ([]MinEvent, error) {
 	buf, err := os.ReadFile(path)
 	if err != nil {

@@ -1,9 +1,5 @@
 package pack
 
-// Упаковка run-папки в один .tar.gz: .min файлы + yaml + fingerprint.
-// Распаковка не нужна qpack — muon читает run-папку; архив только для
-// переноски. Стандартный archive/tar + compress/gzip, без зависимостей.
-
 import (
 	"archive/tar"
 	"compress/gzip"
@@ -15,7 +11,7 @@ import (
 	"strings"
 )
 
-// PackRun пакует runDir в <runDir>.tar.gz рядом (runDir остаётся на месте).
+// Пакует runDir в <runDir>.tar.gz рядом.
 // Возвращает путь к архиву.
 func PackRun(runDir string) (string, error) {
 	arcPath := strings.TrimSuffix(runDir, string(filepath.Separator)) + ".tar.gz"
@@ -25,9 +21,8 @@ func PackRun(runDir string) (string, error) {
 	return arcPath, nil
 }
 
-// PackDirTo жмёт все .dat ниже inputRoot прямо в архив arcPath:
-// внутри архива run-папка <runName>/ (.min + yaml + отпечаток).
-// На диске рядом ничего не остаётся (кроме временного стейджинга внутри).
+// Жмёт все .dat ниже inputRoot в архив arcPath:
+// Внутри архива run-папка <runName>/ (.bin + yaml + отпечаток).
 func PackDirTo(inputRoot, arcPath, runName string) (int, error) {
 	stage, err := os.MkdirTemp("", "qpack-*")
 	if err != nil {
@@ -54,7 +49,7 @@ func PackDirTo(inputRoot, arcPath, runName string) (int, error) {
 	return count, nil
 }
 
-// WriteTar пакует готовую runDir в архив arcPath (имена внутри — от runName).
+// Пакует runDir в архив arcPath (имена внутри от runName).
 func WriteTar(runDir, arcPath string) (string, error) {
 	out, err := os.Create(arcPath)
 	if err != nil {

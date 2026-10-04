@@ -1,8 +1,5 @@
 package unpack
 
-// Распаковка .tar.gz архива run-папки во временную папку.
-// Архив — только переноска: muon и unpack работают с распакованной папкой.
-
 import (
 	"archive/tar"
 	"compress/gzip"
@@ -13,8 +10,8 @@ import (
 	"strings"
 )
 
-// UnpackTar разархивирует .tar.gz во временную папку, возвращает её путь.
-// Вызывающий обязан удалить папку (defer os.RemoveAll).
+// Разархивирует .tar.gz во временную папку, возвращает её путь.
+// После завершения работы удаляет временную папку.
 func UnpackTar(arcPath string) (string, error) {
 	f, err := os.Open(arcPath)
 	if err != nil {

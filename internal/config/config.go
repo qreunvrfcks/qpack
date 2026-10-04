@@ -1,14 +1,5 @@
 package config
 
-// Параметры детектора из default.yaml рядом (embed, грузится в init).
-// Значения не меняются — просто живут в одном месте, код берёт их отсюда
-// вместо захардкоженных констант. Всё выведенное (таблицы, ширины бит)
-// строится здесь же, конвертер только пользуется.
-//
-// Внимание: это копия muon/internal/config, урезанная под dat->min:
-// оставлены только секции detector/dat_format/axis/triggers/archive_format.
-// Секции optimal_format/merge здесь не нужны и не читаются.
-
 import (
 	"crypto/sha256"
 	_ "embed"
@@ -25,8 +16,6 @@ import (
 //go:embed default.yaml
 var rawYAML []byte
 
-// Размеры массивов должны быть константами (буферы рядов).
-// Дублируют yaml один в один; при смене yaml поменять и их.
 const (
 	NPlates      = 18
 	DataLen      = 22
@@ -70,9 +59,8 @@ type fileYAML struct {
 }
 
 var (
-	// Source — откуда взят активный конфиг: "embed" или путь к файлу.
 	Source = "embed"
-	// activeYAML — байты активного конфига (для штампа и отпечатка).
+
 	activeYAML     = rawYAML
 	mu             sync.Mutex
 	Layers         int
@@ -80,7 +68,7 @@ var (
 	RowsPerPlate   int
 	BinsPerRow     int
 	Spaceholders   []int
-	RawToPlate     []int // сырая позиция в блоке data -> плотный idx платы, -1 = разделитель
+	RawToPlate     []int
 
 	NumCols    int
 	HeaderCols int
@@ -118,10 +106,10 @@ func parse(data []byte) fileYAML {
 	return f
 }
 
-// DefaultBytes возвращает встроенный default.yaml по умолчанию.
+// Возвращает встроенный default.yaml по умолчанию.
 func DefaultBytes() []byte { return rawYAML }
 
-// WriteDefault пишет встроенный конфиг в path (родители создаются).
+// Пишет встроенный конфиг в path.
 func WriteDefault(path string) error {
 	if dir := filepath.Dir(path); dir != "." && dir != "" {
 		if err := os.MkdirAll(dir, 0755); err != nil {
@@ -134,8 +122,8 @@ func WriteDefault(path string) error {
 	return nil
 }
 
-// LoadFile подменяет активный конфиг внешним yaml-файлом.
-// Вызывать до конвертации (после init, который грузит встроенный).
+// Меняет активный конфиг на внешний yaml-файл.
+// Вызывать до конвертации (после init).
 func LoadFile(path string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -149,7 +137,7 @@ func LoadFile(path string) error {
 	return nil
 }
 
-// Fingerprint — sha256 hex от АКТИВНОГО конфига (встроенного или из файла).
+// Ключ sha256 hex от активного конфига (встроенного или из файла).
 func Fingerprint() string {
 	mu.Lock()
 	defer mu.Unlock()
@@ -157,7 +145,7 @@ func Fingerprint() string {
 	return hex.EncodeToString(sum[:])
 }
 
-// WriteStamp пишет рядом с выходом копию АКТИВНОГО конфига и строку в журнал:
+// Пишет рядом с выходом копию активного конфига и строку:
 // <dir>/detector.<tool>.yaml + <dir>/fingerprint.txt ("<sha> <tool> <UTC RFC3339>").
 func WriteStamp(dir, tool string) error {
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -183,6 +171,7 @@ func WriteStamp(dir, tool string) error {
 	return nil
 }
 
+// Применяшка из yaml в глобальные переменные =)
 func apply(f fileYAML) {
 	Layers = f.Detector.Layers
 	PlatesPerLayer = f.Detector.PlatesPerLayer

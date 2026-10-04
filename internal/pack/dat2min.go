@@ -1,8 +1,5 @@
 package pack
 
-// Архивный конвертер: тот же .dat -> .bin, но биты ужаты в ноль.
-// Только для хранения. Параметры — из qpack/internal/
-
 import (
 	"bufio"
 	"encoding/binary"
@@ -15,7 +12,7 @@ import (
 	"strings"
 )
 
-// bitWriter льёт биты LSB-first в bufio.Writer. Ноль аллокаций.
+// Сохраняет биты в bufio.Writer.
 type bitWriter struct {
 	w   *bufio.Writer
 	acc uint64
@@ -54,16 +51,14 @@ func (b *bitWriter) flush(path string) error {
 	return nil
 }
 
-// plateGroup — одна непустая плата.
 type plateGroup struct {
 	idx uint8
 	cnt uint8
 	kb  [config.HitsPerPlate]uint8
 }
 
-// ConvertDir жмёт все .dat ниже inputRoot в run-папку ниже outputRoot:
-// <outputRoot>/<runName>/ — .min файлы (расширение .dat -> .min),
-// detector.qpack.yaml + fingerprint.txt рядом. Имя runName задаёт вызывающий.
+// Жмёт все .dat ниже inputRoot в run-папку ниже outputRoot:
+// (.dat -> .bin) + detector.qpack.yaml + fingerprint.txt.
 func ConvertDir(inputRoot, outputRoot, runName string) (string, int, error) {
 	runDir := filepath.Join(outputRoot, runName)
 	if err := os.MkdirAll(runDir, 0755); err != nil {
@@ -79,9 +74,9 @@ func ConvertDir(inputRoot, outputRoot, runName string) (string, int, error) {
 	return runDir, count, nil
 }
 
-// convertInto — общая проходка .dat -> .min, пишет в готовую папку runDir.
-// Битый файл (ошибка чтения/парса строки) скипается: ошибка идёт в лог
-// и в консоль через logger, проход продолжается. Возвращает число сжатых.
+// Общий прогон .dat -> .bin, пишет в готовую папку runDir.
+// Битый файл пропускается, ошибка идёт в лог и консоль.
+// Возвращает число сжатых файлов.
 func convertInto(inputRoot, runDir string) (int, error) {
 	count := 0
 	err := filepath.WalkDir(inputRoot, func(path string, entry os.DirEntry, err error) error {
@@ -114,11 +109,8 @@ func convertInto(inputRoot, runDir string) (int, error) {
 	return count, nil
 }
 
-// ConvertFileMin конвертирует один .dat в один архивный .min v12.
-// Расклад события: [marker:3][tLen:4][tAbs(первое) | tDelta][delta:25]
-// [группы idx:5/cnt-1:5/kb:5]. Пустые события (все платы нулевые) скипаются.
-// Время хранится дельтами от базового (первое событие); дельта с varint:
-// длина tLen (бит, минимум 1), значение без старшего бита следом.
+// Конвертирует файл .dat в .Bin (v12).
+// Пустые события (все платы нулевые) пропускаются.
 func ConvertFileMin(inputFile, outputFile string) error {
 	axis, err := AxisCode(inputFile)
 	if err != nil {
