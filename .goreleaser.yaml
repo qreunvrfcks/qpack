@@ -8,7 +8,6 @@ project_name: qpack
 
 builds:
   - id: qpack
-    dir: qpack
     main: ./cmd
     goos: [linux, windows, darwin]
     goarch: [amd64, arm64]
