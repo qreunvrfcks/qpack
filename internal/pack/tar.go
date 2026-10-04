@@ -1,4 +1,4 @@
-package domain
+package pack
 
 // Упаковка run-папки в один .tar.gz: .min файлы + yaml + fingerprint.
 // Распаковка не нужна qpack — muon читает run-папку; архив только для

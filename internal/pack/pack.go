@@ -1,4 +1,4 @@
-package domain
+package pack
 
 // Архивный конвертер: тот же .dat -> .bin, но биты ужаты в ноль.
 // Только для хранения. Параметры — из qpack/internal/

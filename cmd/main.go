@@ -8,14 +8,15 @@ import (
 	"os"
 	"path/filepath"
 	"qpack/internal/config"
-	"qpack/internal/domain"
 	"qpack/internal/logger"
+	"qpack/internal/pack"
+	"qpack/internal/unpack"
 	"strings"
 )
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "  qpack pack <inDir> <outDir> [--run <name>] [--config <path.yaml>] [--tar]  # .dat -> <outDir>/<name>/ (.min + yaml + отпечаток)")
-	fmt.Fprintln(os.Stderr, "    --tar: только архив <name>.tar.gz (папка не создаётся, стейджинг в tmp)")
+	fmt.Fprintln(os.Stderr, "  qpack pack <inDir> <outDir> [--run <name>] [--config <path.yaml>] [--tar]  # .dat -> run-папка (.min + yaml + отпечаток)")
+	fmt.Fprintln(os.Stderr, "  qpack unpack <inDir> <outDir> [--config <path.yaml>]  # .min -> .dat (n с 1, разделители и place — нули)")
 	fmt.Fprintln(os.Stderr, "  qpack init-config [path]             # записать встроенный конфиг (по умолч. default.yaml)")
 }
 
@@ -99,7 +100,7 @@ func main() {
 	logger.Log("START %s", strings.Join(os.Args[1:], " "))
 	pos, cfgPath, runName, cfgSet, runSet, tarSet := splitArgs(os.Args[2:])
 
-	if cmd != "pack" {
+	if cmd != "pack" && cmd != "unpack" {
 		usage()
 		os.Exit(1)
 	}
@@ -111,12 +112,21 @@ func main() {
 		logger.Error("%v", err)
 		os.Exit(1)
 	}
+	if cmd == "unpack" {
+		count, err := unpack.UnpackDir(pos[0], pos[1])
+		if err != nil {
+			logger.Error("%v", err)
+			os.Exit(1)
+		}
+		logger.Result("unpack %s -> %s files=%d", pos[0], pos[1], count)
+		return
+	}
 	if !runSet || runName == "" {
 		runName = "QPack_" + filepath.Base(filepath.Clean(pos[0]))
 	}
 	if tarSet {
 		arcPath := filepath.Join(pos[1], runName+".tar.gz")
-		count, err := domain.PackDirTo(pos[0], arcPath, runName)
+		count, err := pack.PackDirTo(pos[0], arcPath, runName)
 		if err != nil {
 			logger.Error("%v", err)
 			os.Exit(1)
@@ -124,7 +134,7 @@ func main() {
 		logger.Result("pack %s -> %s files=%d (archive)", pos[0], arcPath, count)
 		return
 	}
-	runDir, count, err := domain.ConvertDir(pos[0], pos[1], runName)
+	runDir, count, err := pack.ConvertDir(pos[0], pos[1], runName)
 	if err != nil {
 		logger.Error("%v", err)
 		os.Exit(1)
