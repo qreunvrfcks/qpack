@@ -14,8 +14,8 @@ import (
 )
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "  qpack pack <inDir> <outDir> [--run <name>] [--config <path.yaml>] [--tar]  # .dat -> run-папка (.qpac + yaml + отпечаток)")
-	fmt.Fprintln(os.Stderr, "  qpack unpack <inDir|in.tar.gz> <outDir> [--config <path.yaml>]  # .qpac или архив -> .dat (n с 1, разделители и place — нули)")
+	fmt.Fprintln(os.Stderr, "  qpack pack <inDir> <outDir> [--run <name>] [--config <path.yaml>] [--tar]  # .dat -> <outDir>/<run>/ (.qpac + yaml + отпечаток)")
+	fmt.Fprintln(os.Stderr, "  qpack unpack <inDir|in.tar.gz> <outDir> [--run <name>] [--config <path.yaml>]  # .qpac или архив -> <outDir>/<run>/ (.dat)")
 	fmt.Fprintln(os.Stderr, "  qpack init-config [path]             # записать встроенный конфиг (по умолч. default.yaml)")
 }
 
@@ -122,12 +122,20 @@ func main() {
 			defer os.RemoveAll(stage)
 			src = stage
 		}
-		count, err := unpack.UnpackDir(src, pos[1])
+		if !runSet || runName == "" {
+			runName = "QUnpack_" + filepath.Base(filepath.Clean(pos[0]))
+		}
+		outDir := filepath.Join(pos[1], runName)
+		if err := os.MkdirAll(outDir, 0755); err != nil {
+			logger.Error("mkdir out dir %q: %v", outDir, err)
+			os.Exit(1)
+		}
+		count, err := unpack.UnpackDir(src, outDir)
 		if err != nil {
 			logger.Error("%v", err)
 			os.Exit(1)
 		}
-		logger.Result("unpack %s -> %s files=%d", pos[0], pos[1], count)
+		logger.Result("unpack %s -> %s files=%d", pos[0], outDir, count)
 		return
 	}
 	if !runSet || runName == "" {
