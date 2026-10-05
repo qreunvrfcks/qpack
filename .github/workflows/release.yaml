@@ -29,7 +29,9 @@ jobs:
         run: |
           sudo apt-get install -y makeself
           VER="${GITHUB_REF_NAME#v}"
-          cp "dist/qpack_${VER}_linux_amd64/qpack" qpack
+          D="dist/qpack_${VER}_linux_amd64"
+          [ -f "$D/qpack" ] || D="dist/qpack_${GITHUB_REF_NAME}_linux_amd64"
+          cp "$D/qpack" qpack
           mkdir -p payload/assets
           cp qpack payload/
           cp assets/qpack.desktop assets/icon.png payload/assets/

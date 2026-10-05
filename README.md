@@ -32,12 +32,12 @@ go run ./cmd unpack <inDir|in.tar.gz> <outDir> [--config <cfg.yaml>]
 go run ./cmd init-config [path]
 ```
 
-pack: берёт все `.dat` из `<inDir>`, создаёт `<outDir>/<name>/` (по умолчанию `QPack_inDir`):
+`pack:` берёт все `.dat` из `<inDir>`, создаёт `<outDir>/<name>/` (по умолчанию `QPack_inDir`):
 
 Внутри`.qpac` файлы, `detector.qpack.yaml` и `fingerprint.txt`.
 `--tar`: создает архив `<outDir>/<name>.tar.gz`.
 
-unpack: разворачивает `.qpac` обратно в `.dat` построчно в исходном формате
+`unpack:` разворачивает `.qpac` обратно в `.dat` построчно в исходном формате
 
 Ось (`_X_`/`_Y_`) определяется по имени входного файла.
 
