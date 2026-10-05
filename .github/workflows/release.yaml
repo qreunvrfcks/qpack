@@ -29,7 +29,7 @@ jobs:
         run: |
           sudo apt-get install -y makeself
           VER="${GITHUB_REF_NAME#v}"
-          BIN="$(find dist -path '*linux_amd64/qpack' -type f | head -1)"
+          BIN="$(find dist -path '*linux_amd64*/qpack' -type f | head -1)"
           [ -n "$BIN" ] || { echo "linux binary not found in dist:"; ls dist; exit 1; }
           cp "$BIN" qpack
           mkdir -p payload/assets
