@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=qpack
+Comment=qpack: .dat to .qpac packer
+Exec=qpack
+Icon=qpack
+Categories=Utility;
+Terminal=true

@@ -5,8 +5,22 @@
 Программа для сжатия сырых данных в архивный формат.
 При работе удаляются нулевые и мусорные строки.
 
+
 ## Запуск
 
+### Через исполняемый файл
+```
+# .dat -> .qpac
+./qpack pack <inDir> <outDir> [--run <name>] [--config <cfg.yaml>] [--tar] 
+
+# .qpac -> .dat
+./qpack unpack <inDir|in.tar.gz> <outDir> [--config <cfg.yaml>] 
+
+# записать встроенный конфиг (по умолч. default.yaml)
+./qpack init-config [path]
+``` 
+
+### Через Go
 ```
 # .dat -> .qpac
 go run ./cmd pack <inDir> <outDir> [--run <name>] [--config <cfg.yaml>] [--tar]

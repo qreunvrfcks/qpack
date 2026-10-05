@@ -25,3 +25,16 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: build .run installer
+        run: |
+          sudo apt-get install -y makeself
+          VER="${GITHUB_REF_NAME#v}"
+          cp "dist/qpack_${VER}_linux_amd64/qpack" qpack
+          mkdir -p payload/assets
+          cp qpack payload/
+          cp assets/qpack.desktop assets/icon.png payload/assets/
+          cp assets/run.sh payload/install.sh
+          makeself --sha256 --complevel 9 payload "qpack_${VER}_linux_amd64.run" "qpack ${VER} installer" ./install.sh
+          gh release upload "$GITHUB_REF_NAME" "qpack_${VER}_linux_amd64.run"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -12,11 +12,24 @@ builds:
       - CGO_ENABLED=0
 
 archives:
-  - id: default
+  - id: windows
+    ids: [qpack]
+    goos: [windows]
+    formats: [zip]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - README.md
       - assets/icon.png
+  - id: unix
+    ids: [qpack]
+    goos: [linux]
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - assets/icon.png
+      - assets/qpack.desktop
+      - assets/install.sh
 checksum:
   name_template: checksums.txt
 
