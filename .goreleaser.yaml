@@ -29,7 +29,12 @@ checksum:
 
 changelog:
   sort: asc
+  use: github
   filters:
     exclude:
       - "^docs:"
       - "^test:"
+
+release:
+  header: |
+    Parallel pack/unpack: per-file worker pool sized to NumCPU, byte-identical output.
