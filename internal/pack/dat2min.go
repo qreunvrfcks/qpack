@@ -9,7 +9,10 @@ import (
 	"path/filepath"
 	"qpack/internal/config"
 	"qpack/internal/logger"
+	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 )
 
 // Сохраняет биты в bufio.Writer.
@@ -76,9 +79,11 @@ func ConvertDir(inputRoot, outputRoot, runName string) (string, int, error) {
 
 // Общий прогон .dat -> .qpac, пишет в готовую папку runDir.
 // Битый файл пропускается, ошибка идёт в лог и консоль.
+// Файлы независимы: жмутся пулом воркеров (NumCPU), порядок не важен.
 // Возвращает число сжатых файлов.
 func convertInto(inputRoot, runDir string) (int, error) {
-	count := 0
+	type job struct{ in, out string }
+	var jobs []job
 	err := filepath.WalkDir(inputRoot, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -86,7 +91,6 @@ func convertInto(inputRoot, runDir string) (int, error) {
 		if entry.IsDir() || !strings.EqualFold(filepath.Ext(entry.Name()), ".dat") {
 			return nil
 		}
-
 		relativePath, err := filepath.Rel(inputRoot, path)
 		if err != nil {
 			return err
@@ -95,18 +99,31 @@ func convertInto(inputRoot, runDir string) (int, error) {
 		if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
 			return err
 		}
-		if err := ConvertFileQpac(path, outputPath); err != nil {
-			logger.Error("READ %s: %v (skipped)", path, err)
-			os.Remove(outputPath) // недожатый хвост не оставляем
-			return nil
-		}
-		count++
+		jobs = append(jobs, job{path, outputPath})
 		return nil
 	})
 	if err != nil {
 		return 0, err
 	}
-	return count, nil
+	var count atomic.Int64
+	sem := make(chan struct{}, runtime.NumCPU())
+	var wg sync.WaitGroup
+	for _, j := range jobs {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(j job) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			if err := ConvertFileQpac(j.in, j.out); err != nil {
+				logger.Error("READ %s: %v (skipped)", j.in, err)
+				os.Remove(j.out) // недожатый хвост не оставляем
+				return
+			}
+			count.Add(1)
+		}(j)
+	}
+	wg.Wait()
+	return int(count.Load()), nil
 }
 
 // Конвертирует файл .dat в .qpac (v12).

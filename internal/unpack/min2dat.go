@@ -8,7 +8,10 @@ import (
 	"qpack/internal/config"
 	"qpack/internal/logger"
 	"qpack/internal/pack"
+	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 )
 
 // Обратная к RawToPlate: номер платы (0-17) -> номер ряда в data (0-21) с учетом плейсхолдеров.
@@ -25,8 +28,10 @@ func plateToRaw() [config.NPlates]int {
 // Разворачивает все .qpac ниже inputRoot в .dat ниже outputRoot.
 // Относительные пути и имена сохраняются (.qpac -> .dat).
 // Битый файл пропускается с READ-ошибкой в лог и консоль.
+// Файлы независимы: разворачиваются пулом воркеров (NumCPU), порядок не важен.
 func UnpackDir(inputRoot, outputRoot string) (int, error) {
-	count := 0
+	type job struct{ in, out string }
+	var jobs []job
 	err := filepath.WalkDir(inputRoot, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -34,7 +39,6 @@ func UnpackDir(inputRoot, outputRoot string) (int, error) {
 		if entry.IsDir() || !strings.EqualFold(filepath.Ext(entry.Name()), ".qpac") {
 			return nil
 		}
-
 		relativePath, err := filepath.Rel(inputRoot, path)
 		if err != nil {
 			return err
@@ -43,18 +47,31 @@ func UnpackDir(inputRoot, outputRoot string) (int, error) {
 		if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
 			return err
 		}
-		if err := UnpackFile(path, outputPath); err != nil {
-			logger.Error("READ %s: %v (skipped)", path, err)
-			os.Remove(outputPath) // недожатый хвост не оставляем
-			return nil
-		}
-		count++
+		jobs = append(jobs, job{path, outputPath})
 		return nil
 	})
 	if err != nil {
 		return 0, err
 	}
-	return count, nil
+	var count atomic.Int64
+	sem := make(chan struct{}, runtime.NumCPU())
+	var wg sync.WaitGroup
+	for _, j := range jobs {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(j job) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			if err := UnpackFile(j.in, j.out); err != nil {
+				logger.Error("READ %s: %v (skipped)", j.in, err)
+				os.Remove(j.out) // недожатый хвост не оставляем
+				return
+			}
+			count.Add(1)
+		}(j)
+	}
+	wg.Wait()
+	return int(count.Load()), nil
 }
 
 // Разворачивает файл .qpac в .dat.
