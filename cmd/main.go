@@ -9,6 +9,7 @@ import (
 	"qpack/internal/config"
 	"qpack/internal/logger"
 	"qpack/internal/pack"
+	"qpack/internal/tui"
 	"qpack/internal/unpack"
 	"strings"
 )
@@ -17,6 +18,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "  qpack pack <inDir> <outDir> [--run <name>] [--config <path.yaml>] [--tar]  # .dat -> <outDir>/<run>/ (.qpac + yaml + отпечаток)")
 	fmt.Fprintln(os.Stderr, "  qpack unpack <inDir|in.tar.gz> <outDir> [--run <name>] [--config <path.yaml>]  # .qpac или архив -> <outDir>/<run>/ (.dat)")
 	fmt.Fprintln(os.Stderr, "  qpack init-config [path]             # записать встроенный конфиг (по умолч. default.yaml)")
+	fmt.Fprintln(os.Stderr, "  qpack ui                             # интерактивное меню в терминале")
 }
 
 // Отделяет позиционные от флагов --config/--run/--tar (в любом порядке).
@@ -44,38 +46,14 @@ func splitArgs(args []string) (pos []string, cfgPath, runName string, cfgSet, ru
 	return pos, cfgPath, runName, cfgSet, runSet, tarSet
 }
 
-// Выбирает конфиг: --config файл;
-// иначе default.yaml рядом;
-// иначе спрашивает, использовать ли встроенный.
-func resolveConfig(lg interface{ Printf(string, ...any) }, cfgPath string, cfgSet bool) error {
-	if cfgSet {
-		lg.Printf("CONFIG file %q", cfgPath)
-		return config.LoadFile(cfgPath)
-	}
-	const local = "default.yaml"
-	if _, err := os.Stat(local); err == nil {
-		lg.Printf("CONFIG file %q (found nearby)", local)
-		return config.LoadFile(local)
-	}
-	fmt.Fprint(os.Stderr, "Warning! No config found. Continue with default config? (y/n) ")
-	var ans string
-	if _, err := fmt.Scanln(&ans); err != nil {
-		return fmt.Errorf("no config: no --config, no ./default.yaml (no input, fail-closed)")
-	}
-	ans = strings.ToLower(strings.TrimSpace(ans))
-	if ans != "y" && ans != "yes" {
-		return fmt.Errorf("no config: no --config, no ./default.yaml (declined)")
-	}
-	lg.Printf("CONFIG built-in default (confirmed, nothing written)")
-	return nil
-}
-
 func main() {
 	if len(os.Args) < 2 {
-		usage()
-		os.Exit(1)
+		os.Exit(tui.Run())
 	}
 	cmd := os.Args[1]
+	if cmd == "ui" {
+		os.Exit(tui.Run())
+	}
 
 	if cmd == "init-config" {
 		path := "default.yaml"
@@ -107,7 +85,7 @@ func main() {
 		usage()
 		os.Exit(1)
 	}
-	if err := resolveConfig(logger, cfgPath, cfgSet); err != nil {
+	if err := tui.ResolveConfig(logger, cfgPath, cfgSet); err != nil {
 		logger.Error("%v", err)
 		os.Exit(1)
 	}
