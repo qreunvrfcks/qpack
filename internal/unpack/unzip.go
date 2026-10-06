@@ -1,8 +1,7 @@
 package unpack
 
 import (
-	"archive/tar"
-	"compress/gzip"
+	"archive/zip"
 	"fmt"
 	"io"
 	"os"
@@ -10,43 +9,28 @@ import (
 	"strings"
 )
 
-// Разархивирует .tar.gz во временную папку.
+// Разархивирует .zip во временную папку.
 // Возвращает корень stage (удалять через defer) и папку с содержимым:
 // если в архиве единственный корневой каталог (run-папка pack) — спускается в него.
-func UnpackTar(arcPath string) (root, content string, err error) {
-	f, err := os.Open(arcPath)
+func UnpackZip(arcPath string) (root, content string, err error) {
+	zr, err := zip.OpenReader(arcPath)
 	if err != nil {
-		return "", "", fmt.Errorf("open archive %q: %w", arcPath, err)
+		return "", "", fmt.Errorf("zip open %q: %w", arcPath, err)
 	}
-	defer f.Close()
-
-	gz, err := gzip.NewReader(f)
-	if err != nil {
-		return "", "", fmt.Errorf("gzip open %q: %w", arcPath, err)
-	}
-	defer gz.Close()
+	defer zr.Close()
 
 	stage, err := os.MkdirTemp("", "qpack-unpack-*")
 	if err != nil {
 		return "", "", fmt.Errorf("mktemp stage: %w", err)
 	}
 
-	tr := tar.NewReader(gz)
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			os.RemoveAll(stage)
-			return "", "", fmt.Errorf("tar read %q: %w", arcPath, err)
-		}
-		dst := filepath.Join(stage, filepath.Clean(hdr.Name))
+	for _, f := range zr.File {
+		dst := filepath.Join(stage, filepath.Clean(f.Name))
 		if !strings.HasPrefix(dst, stage) {
 			os.RemoveAll(stage)
-			return "", "", fmt.Errorf("tar entry escapes stage: %q", hdr.Name)
+			return "", "", fmt.Errorf("zip entry escapes stage: %q", f.Name)
 		}
-		if hdr.FileInfo().IsDir() {
+		if f.FileInfo().IsDir() {
 			if err := os.MkdirAll(dst, 0755); err != nil {
 				os.RemoveAll(stage)
 				return "", "", err
@@ -57,20 +41,26 @@ func UnpackTar(arcPath string) (root, content string, err error) {
 			os.RemoveAll(stage)
 			return "", "", err
 		}
-		out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		rc, err := f.Open()
 		if err != nil {
 			os.RemoveAll(stage)
 			return "", "", err
 		}
-		if _, err := io.Copy(out, tr); err != nil {
+		out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			rc.Close()
+			os.RemoveAll(stage)
+			return "", "", err
+		}
+		if _, err := io.Copy(out, rc); err != nil {
+			rc.Close()
 			out.Close()
 			os.RemoveAll(stage)
-			return "", "", fmt.Errorf("tar extract %q: %w", hdr.Name, err)
+			return "", "", fmt.Errorf("zip extract %q: %w", f.Name, err)
 		}
+		rc.Close()
 		out.Close()
 	}
-	// Архив pack содержит run-папку внутри (A/A.qpac...):
-	// спускаемся в единственный корневой каталог, чтобы не плодить A/A.
 	entries, err := os.ReadDir(stage)
 	if err != nil {
 		os.RemoveAll(stage)

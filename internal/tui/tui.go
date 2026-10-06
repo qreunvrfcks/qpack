@@ -50,30 +50,146 @@ func prompt(label string) (string, bool) {
 	return strings.TrimSpace(line), true
 }
 
+// pickDir — выбор папки: графический диалог (проводник), иначе ввод текстом.
+// Пустой ответ в диалоге = отмена, тогда тоже падаем на ручной ввод.
+func pickDir(label string) (string, bool) {
+	if dir, ok := guiPickDir(label); ok && dir != "" {
+		fmt.Fprintln(os.Stdout, label+dir)
+		return dir, true
+	}
+	fmt.Fprintln(os.Stdout, "(проводник недоступен — введи путь текстом)")
+	for {
+		dir, ok := prompt(label)
+		if !ok {
+			return "", false
+		}
+		if dir == "" {
+			return "", true
+		}
+		if st, err := os.Stat(dir); err == nil {
+			if st.IsDir() {
+				return dir, true
+			}
+			fmt.Fprintln(os.Stdout, "это файл, нужна папка (пусто = назад)")
+			continue
+		}
+		fmt.Fprintf(os.Stdout, "папки нет, создать %q? (y/n): ", dir)
+		ans, ok := prompt("")
+		if !ok {
+			return "", false
+		}
+		if strings.ToLower(strings.TrimSpace(ans)) == "y" || strings.ToLower(strings.TrimSpace(ans)) == "yes" {
+			return dir, true
+		}
+	}
+}
+
+// pickUnpackSrc — вход unpack: папка .qpac или архив .tar.gz.
+// Тип определяет сама прога по расширению (.gz = архив).
+func pickUnpackSrc(label string) (string, bool) {
+	kind, ok := prompt("input: [1] .qpac dir  [2] archive (.tar.gz/.zip): ")
+	if !ok {
+		return "", false
+	}
+	if strings.TrimSpace(kind) == "2" {
+		return pickArchive(label)
+	}
+	return pickQpacDir(label)
+}
+
+func pickQpacDir(label string) (string, bool) {
+	if dir, ok := guiPickDir(label); ok && dir != "" {
+		if st, err := os.Stat(dir); err == nil && st.IsDir() {
+			fmt.Fprintln(os.Stdout, label+dir)
+			return dir, true
+		}
+	}
+	fmt.Fprintln(os.Stdout, "(проводник недоступен — введи путь текстом)")
+	for {
+		dir, ok := prompt(label)
+		if !ok {
+			return "", false
+		}
+		if dir == "" {
+			return "", true
+		}
+		if st, err := os.Stat(dir); err == nil && st.IsDir() {
+			return dir, true
+		}
+		fmt.Fprintln(os.Stdout, "нужна папка .qpac, попробуй ещё (пусто = назад)")
+	}
+}
+
+func pickArchive(label string) (string, bool) {
+	if src, ok := guiPickArchive(label); ok && validArchive(src) {
+		fmt.Fprintln(os.Stdout, label+src)
+		return src, true
+	}
+	fmt.Fprintln(os.Stdout, "(проводник недоступен — введи путь текстом)")
+	for {
+		src, ok := prompt(label)
+		if !ok {
+			return "", false
+		}
+		if src == "" {
+			return "", true
+		}
+		if validArchive(src) {
+			return src, true
+		}
+		fmt.Fprintln(os.Stdout, "нужен .tar.gz или .zip, попробуй ещё (пусто = назад)")
+	}
+}
+
+func validArchive(src string) bool {
+	if src == "" {
+		return false
+	}
+	ext := strings.ToLower(filepath.Ext(src))
+	if ext != ".gz" && ext != ".zip" {
+		return false
+	}
+	st, err := os.Stat(src)
+	return err == nil && !st.IsDir()
+}
+
+func validUnpackSrc(src string) bool {
+	if src == "" {
+		return false
+	}
+	ext := strings.ToLower(filepath.Ext(src))
+	if ext == ".gz" || ext == ".zip" {
+		st, err := os.Stat(src)
+		return err == nil && !st.IsDir()
+	}
+	st, err := os.Stat(src)
+	return err == nil && st.IsDir()
+}
+
 // Run — интерактивное меню в терминале. Возвращает код выхода.
 func Run() int {
 	for {
 		fmt.Fprintln(os.Stdout, "qpack — choose action:")
-		fmt.Fprintln(os.Stdout, "  1 pack .dat -> .qpac")
-		fmt.Fprintln(os.Stdout, "  2 unpack .qpac -> .dat")
-		fmt.Fprintln(os.Stdout, "  3 init-config")
-		fmt.Fprintln(os.Stdout, "  q quit")
+		fmt.Fprintln(os.Stdout, "  [pack] .dat -> .qpac")
+		fmt.Fprintln(os.Stdout, "  [unpack] .qpac -> .dat")
+		fmt.Fprintln(os.Stdout, "  [config] set config")
+		fmt.Fprintln(os.Stdout, "  [q] quit")
 		choice, ok := prompt("> ")
 		if !ok {
 			return 0
 		}
 		switch strings.ToLower(choice) {
-		case "1":
+		case "pack":
 			doPack()
-		case "2":
+		case "unpack":
 			doUnpack()
-		case "3":
+		case "config":
 			doInitConfig()
 		case "q", "quit", "exit":
 			pauseIfTTY()
 			return 0
 		default:
-			fmt.Fprintln(os.Stdout, "unknown choice, try 1/2/3/q")
+			fmt.Fprintln(os.Stdout, "unknown choice, try pack/unpack/config/q")
 		}
 	}
 }
@@ -98,19 +214,37 @@ func withSpinner(fn func() string) {
 	fmt.Fprintln(os.Stdout, msg)
 }
 
-func cfgFromAnswer(lg interface{ Printf(string, ...any) }, ans string) error {
-	if ans != "" {
-		return ResolveConfig(lg, ans, true)
+// askConfig — один вопрос: [1] auto  [2] import config (диалог файла).
+// Возвращает cfgPath/cfgSet для ResolveConfig; ok=false = назад.
+func askConfig() (cfgPath string, cfgSet, ok bool) {
+	ans, ok := prompt("config: [1] auto  [2] import file: ")
+	if !ok {
+		return "", false, false
 	}
-	return ResolveConfig(lg, "", false)
+	if strings.TrimSpace(ans) != "2" {
+		return "", false, true
+	}
+	if path, ok := guiPickFile("Import config", "*.yaml *.yml|YAML configs"); ok && path != "" {
+		fmt.Fprintln(os.Stdout, "config: "+path)
+		return path, true, true
+	}
+	fmt.Fprintln(os.Stdout, "(проводник недоступен — введи путь текстом)")
+	path, ok := prompt("config file (empty = auto): ")
+	if !ok {
+		return "", false, false
+	}
+	if strings.TrimSpace(path) == "" {
+		return "", false, true
+	}
+	return strings.TrimSpace(path), true, true
 }
 
 func doPack() {
-	inDir, ok := prompt("input dir (.dat): ")
+	inDir, ok := pickDir("input dir (.dat): ")
 	if !ok || inDir == "" {
 		return
 	}
-	outDir, ok := prompt("output dir: ")
+	outDir, ok := pickDir("output dir: ")
 	if !ok || outDir == "" {
 		return
 	}
@@ -118,11 +252,11 @@ func doPack() {
 	if !ok {
 		return
 	}
-	cfgPath, ok := prompt("config path (empty = auto): ")
+	cfgPath, cfgSet, ok := askConfig()
 	if !ok {
 		return
 	}
-	tarAns, ok := prompt("tar.gz archive? (y/n): ")
+	arcAns, ok := prompt("archive? [1] none  [2] tar.gz  [3] zip: ")
 	if !ok {
 		return
 	}
@@ -136,15 +270,26 @@ func doPack() {
 	}
 	defer closeLog()
 	lg.Log("START pack %s %s", inDir, outDir)
-	if err := cfgFromAnswer(lg, cfgPath); err != nil {
+	if err := ResolveConfig(lg, cfgPath, cfgSet); err != nil {
 		lg.Error("%v", err)
 		return
 	}
-	tar := strings.ToLower(strings.TrimSpace(tarAns)) == "y" || strings.ToLower(strings.TrimSpace(tarAns)) == "yes"
+	arc := strings.TrimSpace(arcAns)
 	withSpinner(func() string {
-		if tar {
+		if arc == "2" {
 			arcPath := filepath.Join(outDir, runName+".tar.gz")
 			count, err := pack.PackDirTo(inDir, arcPath, runName)
+			if err != nil {
+				lg.Error("%v", err)
+				return fmt.Sprintf("error: %v", err)
+			}
+			msg := fmt.Sprintf("pack %s -> %s files=%d (archive)", inDir, arcPath, count)
+			lg.Result("%s", msg)
+			return msg
+		}
+		if arc == "3" {
+			arcPath := filepath.Join(outDir, runName+".zip")
+			count, err := pack.PackDirToZip(inDir, arcPath, runName)
 			if err != nil {
 				lg.Error("%v", err)
 				return fmt.Sprintf("error: %v", err)
@@ -165,11 +310,11 @@ func doPack() {
 }
 
 func doUnpack() {
-	src, ok := prompt("input (.qpac dir or .tar.gz): ")
+	src, ok := pickUnpackSrc("input: ")
 	if !ok || src == "" {
 		return
 	}
-	outBase, ok := prompt("output dir: ")
+	outBase, ok := pickDir("output dir: ")
 	if !ok || outBase == "" {
 		return
 	}
@@ -177,7 +322,7 @@ func doUnpack() {
 	if !ok {
 		return
 	}
-	cfgPath, ok := prompt("config path (empty = auto): ")
+	cfgPath, cfgSet, ok := askConfig()
 	if !ok {
 		return
 	}
@@ -188,26 +333,38 @@ func doUnpack() {
 	}
 	defer closeLog()
 	lg.Log("START unpack %s %s", src, outBase)
-	if err := cfgFromAnswer(lg, cfgPath); err != nil {
+	if err := ResolveConfig(lg, cfgPath, cfgSet); err != nil {
 		lg.Error("%v", err)
 		return
 	}
 	if !runSet(runName) {
-		runName = "QUnpack_" + filepath.Base(filepath.Clean(src))
+		base := filepath.Base(filepath.Clean(src))
+		base = strings.TrimSuffix(base, filepath.Ext(base))
+		base = strings.TrimSuffix(base, ".tar")
+		base = strings.TrimSuffix(base, ".zip")
+		runName = "QUnpack_" + base
 	}
 	outDir := filepath.Join(outBase, runName)
 	if err := os.MkdirAll(outDir, 0755); err != nil {
 		lg.Error("mkdir out dir %q: %v", outDir, err)
 		return
 	}
-	if strings.EqualFold(filepath.Ext(src), ".gz") {
-		stage, err := unpack.UnpackTar(src)
+	if strings.EqualFold(filepath.Ext(src), ".zip") {
+		stage, content, err := unpack.UnpackZip(src)
 		if err != nil {
 			lg.Error("%v", err)
 			return
 		}
 		defer os.RemoveAll(stage)
-		src = stage
+		src = content
+	} else if strings.EqualFold(filepath.Ext(src), ".gz") {
+		stage, content, err := unpack.UnpackTar(src)
+		if err != nil {
+			lg.Error("%v", err)
+			return
+		}
+		defer os.RemoveAll(stage)
+		src = content
 	}
 	withSpinner(func() string {
 		count, err := unpack.UnpackDir(src, outDir)

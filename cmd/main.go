@@ -15,14 +15,14 @@ import (
 )
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "  qpack pack <inDir> <outDir> [--run <name>] [--config <path.yaml>] [--tar]  # .dat -> <outDir>/<run>/ (.qpac + yaml + отпечаток)")
-	fmt.Fprintln(os.Stderr, "  qpack unpack <inDir|in.tar.gz> <outDir> [--run <name>] [--config <path.yaml>]  # .qpac или архив -> <outDir>/<run>/ (.dat)")
+	fmt.Fprintln(os.Stderr, "  qpack pack <inDir> <outDir> [--run <name>] [--config <path.yaml>] [--tar] [--zip]  # .dat -> <outDir>/<run>/ или архив (.qpac + yaml + отпечаток)")
+	fmt.Fprintln(os.Stderr, "  qpack unpack <inDir|in.tar.gz|in.zip> <outDir> [--run <name>] [--config <path.yaml>]  # .qpac или архив -> <outDir>/<run>/ (.dat)")
 	fmt.Fprintln(os.Stderr, "  qpack init-config [path]             # записать встроенный конфиг (по умолч. default.yaml)")
 	fmt.Fprintln(os.Stderr, "  qpack ui                             # интерактивное меню в терминале")
 }
 
-// Отделяет позиционные от флагов --config/--run/--tar (в любом порядке).
-func splitArgs(args []string) (pos []string, cfgPath, runName string, cfgSet, runSet, tarSet bool) {
+// Отделяет позиционные от флагов --config/--run/--tar/--zip (в любом порядке).
+func splitArgs(args []string) (pos []string, cfgPath, runName string, cfgSet, runSet, tarSet, zipSet bool) {
 	skip := map[int]bool{}
 	for i := range args {
 		a := args[i]
@@ -36,6 +36,8 @@ func splitArgs(args []string) (pos []string, cfgPath, runName string, cfgSet, ru
 			runName, runSet, skip[i] = rest, true, true
 		} else if a == "--tar" {
 			tarSet, skip[i] = true, true
+		} else if a == "--zip" {
+			zipSet, skip[i] = true, true
 		}
 	}
 	for i := range args {
@@ -43,7 +45,7 @@ func splitArgs(args []string) (pos []string, cfgPath, runName string, cfgSet, ru
 			pos = append(pos, args[i])
 		}
 	}
-	return pos, cfgPath, runName, cfgSet, runSet, tarSet
+	return pos, cfgPath, runName, cfgSet, runSet, tarSet, zipSet
 }
 
 func main() {
@@ -75,7 +77,7 @@ func main() {
 	}
 	defer closeLog()
 	logger.Log("START %s", strings.Join(os.Args[1:], " "))
-	pos, cfgPath, runName, cfgSet, runSet, tarSet := splitArgs(os.Args[2:])
+	pos, cfgPath, runName, cfgSet, runSet, tarSet, zipSet := splitArgs(os.Args[2:])
 
 	if cmd != "pack" && cmd != "unpack" {
 		usage()
@@ -91,17 +93,29 @@ func main() {
 	}
 	if cmd == "unpack" {
 		src := pos[0]
-		if strings.EqualFold(filepath.Ext(src), ".gz") {
-			stage, err := unpack.UnpackTar(src)
+		if strings.EqualFold(filepath.Ext(src), ".zip") {
+			stage, content, err := unpack.UnpackZip(src)
 			if err != nil {
 				logger.Error("%v", err)
 				os.Exit(1)
 			}
 			defer os.RemoveAll(stage)
-			src = stage
+			src = content
+		} else if strings.EqualFold(filepath.Ext(src), ".gz") {
+			stage, content, err := unpack.UnpackTar(src)
+			if err != nil {
+				logger.Error("%v", err)
+				os.Exit(1)
+			}
+			defer os.RemoveAll(stage)
+			src = content
 		}
 		if !runSet || runName == "" {
-			runName = "QUnpack_" + filepath.Base(filepath.Clean(pos[0]))
+			base := filepath.Base(filepath.Clean(pos[0]))
+			base = strings.TrimSuffix(base, filepath.Ext(base))
+			base = strings.TrimSuffix(base, ".tar")
+			base = strings.TrimSuffix(base, ".zip")
+			runName = "QUnpack_" + base
 		}
 		outDir := filepath.Join(pos[1], runName)
 		if err := os.MkdirAll(outDir, 0755); err != nil {
@@ -122,6 +136,16 @@ func main() {
 	if tarSet {
 		arcPath := filepath.Join(pos[1], runName+".tar.gz")
 		count, err := pack.PackDirTo(pos[0], arcPath, runName)
+		if err != nil {
+			logger.Error("%v", err)
+			os.Exit(1)
+		}
+		logger.Result("pack %s -> %s files=%d (archive)", pos[0], arcPath, count)
+		return
+	}
+	if zipSet {
+		arcPath := filepath.Join(pos[1], runName+".zip")
+		count, err := pack.PackDirToZip(pos[0], arcPath, runName)
 		if err != nil {
 			logger.Error("%v", err)
 			os.Exit(1)
